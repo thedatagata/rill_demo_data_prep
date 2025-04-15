@@ -3,6 +3,6 @@ gordon_bombay:
   outputs: 
     prod: 
       type: duckdb 
-      path: data_swamp.duckdb
+      path: ../../data/data_swamp.duckdb
       schema: source_data
       threads: 4

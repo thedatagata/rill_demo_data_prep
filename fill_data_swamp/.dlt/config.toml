@@ -1,6 +1,6 @@
 [sources.filesystem]
-bucket_url = "gs://data-swamp/clean/analytics/"
-file_glob = "ga_sessions_*/*.parquet"
+bucket_url = "gs://data-swamp/raw/"
+file_glob = "*.csv"
 
 [destination.filesystem]
 bucket_url = "gs://data-swamp/clean/"

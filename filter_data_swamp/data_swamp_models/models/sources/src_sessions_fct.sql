@@ -1,3 +1,10 @@
+{{
+  config(
+    materialized='incremental',
+    strategy='append'
+  )
+}}
+
 WITH 
     sessions_base 
         AS 
@@ -7,7 +14,7 @@ WITH
                     visit_id as session_id,
                     full_visitor_id as user_id,
                     CAST(visit_number as INTEGER) as session_number,
-                    TO_TIMESTAMP(CAST(visit_start_time AS BIGINT)) - INTERVAL '4' MONTH + INTERVAL '7' YEAR as session_start_time,
+                    TO_TIMESTAMP(CAST(visit_start_time AS BIGINT)) - INTERVAL '7' MONTH + INTERVAL '7' YEAR as session_start_time,
                     date as session_date,
                     json_extract_string(device, '$.browser') as session_device__browser,
                     json_extract_string(device, '$.operatingSystem') as session_device__os,
@@ -28,7 +35,7 @@ WITH
                     json_extract_string(traffic_source, '$.campaign') as session_traffic_source__campaign
                 FROM {{source('duck_pond', 'load')}}
                 {% if is_incremental() %}
-                WHERE TO_TIMESTAMP(CAST(visit_start_time AS BIGINT)) - INTERVAL '4' MONTH + INTERVAL '7' YEAR > (SELECT MAX(session_start_time) FROM {{ this }})
+                WHERE TO_TIMESTAMP(CAST(visit_start_time AS BIGINT)) - INTERVAL '7' MONTH + INTERVAL '7' YEAR > (SELECT MAX(session_start_time) FROM {{ this }})
                 {% endif %}
             ), 
     deduped_sessions 

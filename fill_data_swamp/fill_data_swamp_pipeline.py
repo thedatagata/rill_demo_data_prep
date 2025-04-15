@@ -71,7 +71,7 @@ if __name__ == '__main__':
         
         console.log(f"[blue]Found {len(months)} months to process")
         
-        for month in months[0:3]:
+        for month in months:
             info = pipeline.run(
                 extract(month, ga_scan),
                 table_name=f"ga_sessions_{month}",

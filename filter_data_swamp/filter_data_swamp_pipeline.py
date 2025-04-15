@@ -10,10 +10,11 @@ import ast
 from typing import Dict, Iterator, Optional
 from dlt.helpers.dbt import create_runner
 import os
+from pathlib import Path
 
 console = Console()
 
-# Configure logging levels and silence warnings
+# Configure logging and silence warnings
 for logger in ['botocore', 'boto3', 'urllib3', 's3transfer', 'fsspec', 'aiobotocore']:
     logging.getLogger(logger).setLevel(logging.WARNING)
 warnings.filterwarnings('ignore', message='.*checksum.*')
@@ -30,20 +31,32 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# Get absolute paths for important locations
+SCRIPT_DIR = Path(__file__).parent.absolute()
+PROJECT_ROOT = SCRIPT_DIR.parent
+DUCKDB_PATH = PROJECT_ROOT / "data" / "data_swamp.duckdb"
+DBT_PROJECT_PATH = SCRIPT_DIR / "data_swamp_models"
+
+pipeline = dlt.pipeline(
+    pipeline_name="filter_data_swamp",
+    destination=dlt.destinations.duckdb(str(DUCKDB_PATH)),
+    dataset_name="source_data",
+    progress="log"
+)
+
 def execute_pipeline(file_object):
     """Execute the data pipeline for a given file object."""
     try:
-        pipeline = dlt.pipeline(
-            pipeline_name="filter_data_swamp",
-            destination=dlt.destinations.duckdb("./data_swamp_models/data_swamp.duckdb"),
-            dataset_name="source_data",
-            progress="log"
-        )
+        # Ensure data directory exists
+        DUCKDB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        
+
     except Exception as e:
         logger.error(f"Failed to initialize pipeline: {e}")
         raise
 
-    @dlt.resource(max_table_nesting=3)
+    # Rest of your pipeline code stays the same
+    @dlt.resource(max_table_nesting=3, write_disposition="append")
     def extract():
         """Extract stage: Reads data in chunks to manage memory."""
         try:
@@ -107,23 +120,13 @@ def execute_pipeline(file_object):
     pipeline_info = pipeline.run(load)
     
     logger.info("Running dbt models...")
-    dbt = dlt.dbt.package(
-        pipeline, 
-        "data_swamp_models"
-    )
-    models = dbt.run_all() 
-    for m in models:
-        print(
-            f"Model {m.model_name} materialized" +
-            f" in {m.time}" +
-            f" with status {m.status}" +
-            f" and message {m.message}"
-        )
+
     return pipeline_info
 
 if __name__ == '__main__':
     logger.info("Starting data pipeline...")
-    os.makedirs("data", exist_ok=True)
+    logger.info(f"DuckDB path: {DUCKDB_PATH}")
+    logger.info(f"DBT project path: {DBT_PROJECT_PATH}")
     
     for file_object in filesystem():
         try:
@@ -133,3 +136,18 @@ if __name__ == '__main__':
         except Exception as e:
             logger.error(f"Failed to process file {file_object['file_url']}: {e}")
             continue
+    
+        dbt = dlt.dbt.package(
+        pipeline, 
+        str(DBT_PROJECT_PATH)
+    )
+    models = dbt.run_all() 
+    for m in models:
+        print(
+            f"Model {m.model_name} materialized" +
+            f" in {m.time}" +
+            f" with status {m.status}" +
+            f" and message {m.message}"
+        )
+
+
